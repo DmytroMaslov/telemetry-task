@@ -1,0 +1,20 @@
+syntax = "proto3";
+option go_package = "/protocol";
+
+package protocol;
+
+message Metric {
+    string Name =1;
+    int64 Value =2;
+    uint64 Timestamp=3;
+}
+
+message Result{
+    bool Success =1;
+    string Message=2;
+}
+
+service TelemetryService {
+    // TODO Rename to Metrics
+    rpc SendMetrics(stream Metric)returns(Result){}
+}
