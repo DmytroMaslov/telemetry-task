@@ -41,29 +41,41 @@ func (bw *MetricCollector) Start() error {
 	logger.Info("Starting metric collector...")
 	ticker := time.NewTicker(time.Duration(bw.flushInterval) * time.Millisecond)
 
+	errCh := make(chan error)
 	go func() {
+		defer func() {
+			close(bw.metricsCh)
+			close(errCh)
+		}()
+
 		for {
 			select {
 			case metric := <-bw.metricsCh:
 				err := bw.Write(metric)
 				if err != nil {
-					fmt.Println("Error writing metric:", err)
+					errCh <- err
 				}
 
 			case <-ticker.C:
-				fmt.Println("Ticker triggered, flushing buffer...")
-				if err := bw.Flush(); err != nil {
-					fmt.Printf("Error writing to file in ticker case: %v\n", err)
+				if err := bw.FlushWithLock(); err != nil {
+					errCh <- err
 				}
 
 			case <-bw.doneCh:
-				fmt.Println("Received done signal, flushing buffer and stopping...")
-				if err := bw.Flush(); err != nil {
-					fmt.Printf("Error writing to file in done case: %v\n", err)
+				logger.Debug("Received done signal, flushing buffer and stopping...")
+				ticker.Stop()
+				if err := bw.FlushWithLock(); err != nil {
+					errCh <- err
 				}
 				bw.file.Close()
 				return
 			}
+		}
+	}()
+
+	go func() {
+		for err := range errCh {
+			logger.Error("failed to receive metric", "err", err)
 		}
 	}()
 	return nil
@@ -71,25 +83,31 @@ func (bw *MetricCollector) Start() error {
 
 func (bw *MetricCollector) Write(metric *pb.Metric) error {
 	line := fmt.Sprintf("%d,%s,%d\n", metric.Value, metric.Name, metric.Timestamp)
-	fmt.Println("Writing metric:", line)
+	logger.Debug("write metric", "metric", line)
 
-	if len([]byte(line)) > bw.buffer.Available() {
-		fmt.Println("Buffer is full, flushing...")
-		bw.Flush() // Flush if the line exceeds available buffer space
-	}
 	bw.lock.Lock()
 	defer bw.lock.Unlock()
+
+	if len([]byte(line)) > bw.buffer.Available() {
+		logger.Debug("Buffer is full, flushing...")
+		bw.Flush() // Flush if the line exceeds available buffer space
+	}
 	_, err := bw.buffer.Write([]byte(line))
 	if err != nil {
-		return fmt.Errorf("error writing to buffer: %v", err)
+		return fmt.Errorf("writing to buffer: %v", err)
 	}
 	return nil
 }
 
-func (bw *MetricCollector) Flush() error {
-	fmt.Println("Flushing buffer to file...")
+func (bw *MetricCollector) FlushWithLock() error {
 	bw.lock.Lock()
 	defer bw.lock.Unlock()
+
+	return bw.Flush()
+}
+
+func (bw *MetricCollector) Flush() error {
+	logger.Debug("Flushing buffer to file...")
 
 	if bw.buffer.Len() == 0 {
 		return nil // Nothing to write
@@ -97,7 +115,7 @@ func (bw *MetricCollector) Flush() error {
 
 	_, err := bw.file.WriteString(bw.buffer.String()) // Write the buffer to the file
 	if err != nil {
-		return fmt.Errorf("error writing to file: %v", err)
+		return fmt.Errorf("writing string to file: %v", err)
 	}
 	bw.buffer.Reset() // Clear the buffer after writing
 	return nil
@@ -106,5 +124,6 @@ func (bw *MetricCollector) Flush() error {
 func (bw *MetricCollector) Stop() error {
 	fmt.Println("Stopping MetricCollector...")
 	bw.doneCh <- struct{}{}
+	close(bw.doneCh)
 	return nil
 }
