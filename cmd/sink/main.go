@@ -10,6 +10,7 @@ import (
 	logUtil "telemetry-task/lib/logger"
 	"telemetry-task/lib/services/sink"
 	pb "telemetry-task/protocol"
+	"time"
 
 	"google.golang.org/grpc"
 )
@@ -43,23 +44,32 @@ func main() {
 	if err = sink.Start(); err != nil {
 		log.Fatalf("failed to start sink service: %v", err.Error())
 	}
-
 	lis, err := net.Listen("tcp", cfg.BindAddress)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("failed to listen: %s", err.Error())
 	}
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterTelemetryServiceServer(grpcServer, sink)
-	grpcServer.Serve(lis)
-
-	logger.Info("Sink serve...")
 
 	exit := make(chan os.Signal, 1)
 	signal.Notify(exit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-	<-exit
 
-	grpcServer.Stop()
-	sink.Stop()
-	logger.Info("Sink stopped gracefully.")
+	go func() {
+		<-exit
+		timer := time.AfterFunc(10*time.Second, func() {
+			log.Println("Server couldn't stop gracefully in time. Doing force stop.")
+			grpcServer.Stop()
+		})
+		defer timer.Stop()
+		grpcServer.GracefulStop()
+		sink.Stop()
+		logger.Info("Sink stopped gracefully.")
+	}()
+
+	logger.Info("Sink serve...")
+	err = grpcServer.Serve(lis)
+	if err != nil {
+		log.Fatalf("failed to serve: %s", err.Error())
+	}
 }
