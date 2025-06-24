@@ -37,7 +37,7 @@ func (ms *MetricSender) Send() error {
 	metric := &pb.Metric{
 		Name:      ms.name,
 		Value:     int64(rand.Int()),
-		Timestamp: uint64(time.Now().Unix()),
+		Timestamp: uint64(time.Now().UnixMilli()),
 	}
 
 	if err := ms.metricStream.Send(metric); err != nil {
