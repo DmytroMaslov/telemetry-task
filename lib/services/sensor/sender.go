@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	pb "telemetry-task/protocol"
+	pb "telemetry-task/protocol/telemetry"
 	"time"
 
 	"google.golang.org/grpc"

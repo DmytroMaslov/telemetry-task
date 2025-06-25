@@ -2,7 +2,7 @@ package validator
 
 import (
 	"errors"
-	pb "telemetry-task/protocol"
+	pb "telemetry-task/protocol/telemetry"
 )
 
 type Validator interface {

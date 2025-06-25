@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	pb "telemetry-task/protocol"
+	pb "telemetry-task/protocol/telemetry"
 	"time"
 )
-
-// TODO: refactor metric collector
 
 type MetricCollector struct {
 	metricsCh     chan *pb.Metric

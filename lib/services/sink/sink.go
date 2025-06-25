@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 	logUtil "telemetry-task/lib/logger"
-	pb "telemetry-task/protocol"
+	pb "telemetry-task/protocol/telemetry"
 
 	"telemetry-task/lib/validator"
 

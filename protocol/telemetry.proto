@@ -1,7 +1,7 @@
 syntax = "proto3";
-option go_package = "/protocol";
+option go_package = "/telemetry";
 
-package protocol;
+package telemetry;
 
 message Metric {
     string Name =1;

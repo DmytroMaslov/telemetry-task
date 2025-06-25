@@ -1,0 +1,5 @@
+bind_address: "localhost:8080"
+file_path: "./tmp/metrics.txt"
+buffer_size: 1024
+flush_interval: 100
+rate_limit: 1048576

@@ -9,7 +9,7 @@ import (
 	"syscall"
 	logUtil "telemetry-task/lib/logger"
 	"telemetry-task/lib/services/sink"
-	pb "telemetry-task/protocol"
+	pb "telemetry-task/protocol/telemetry"
 	"time"
 
 	"google.golang.org/grpc"
@@ -18,6 +18,9 @@ import (
 var (
 	logger = logUtil.LoggerWithPrefix("MAIN")
 )
+
+// TODO: add mTLS https://liambeeton.com/programming/secure-grpc-over-mtls-using-go
+// https://dev.to/techschoolguru/how-to-secure-grpc-connection-with-ssl-tls-in-go-4ph
 
 func main() {
 	logger.Info("Starting sink server...")
