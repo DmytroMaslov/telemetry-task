@@ -7,20 +7,19 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"telemetry-task/lib/connection/grpc_conn"
 	logUtil "telemetry-task/lib/logger"
 	"telemetry-task/lib/services/sink"
 	pb "telemetry-task/protocol/telemetry"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var (
 	logger = logUtil.LoggerWithPrefix("MAIN")
 )
-
-// TODO: add mTLS https://liambeeton.com/programming/secure-grpc-over-mtls-using-go
-// https://dev.to/techschoolguru/how-to-secure-grpc-connection-with-ssl-tls-in-go-4ph
 
 func main() {
 	logger.Info("Starting sink server...")
@@ -47,13 +46,22 @@ func main() {
 	if err = sink.Start(); err != nil {
 		log.Fatalf("failed to start sink service: %v", err.Error())
 	}
+
+	var tlsCredentials credentials.TransportCredentials
+	if cfg.Cert != "" && cfg.Key != "" {
+		tlsCredentials, err = grpc_conn.LoadServerTLSCredentials(cfg.Cert, cfg.Key)
+		if err != nil {
+			log.Fatal("cannot load TLS credentials: ", err)
+		}
+	}
+
+	grpcServer := grpc.NewServer(grpc.Creds(tlsCredentials))
+	pb.RegisterTelemetryServiceServer(grpcServer, sink)
+
 	lis, err := net.Listen("tcp", cfg.BindAddress)
 	if err != nil {
 		log.Fatalf("failed to listen: %s", err.Error())
 	}
-
-	grpcServer := grpc.NewServer()
-	pb.RegisterTelemetryServiceServer(grpcServer, sink)
 
 	exit := make(chan os.Signal, 1)
 	signal.Notify(exit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)

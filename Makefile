@@ -8,10 +8,12 @@ build:
 run-sensor:
 	${BIN_DIR}/sensor \
 		--addr="localhost:8080" \
-		--name=${SENSOR_NAME}
+		--name=${SENSOR_NAME} \
+		--rate=100			\
+		--cert=./certs/ca-cert.pem
 
 run-sink:
-	${BIN_DIR}sink \
+	${BIN_DIR}/sink \
 		--config=${SERVER_CONFIG_FILE}
 
 clean:
@@ -23,11 +25,12 @@ generate-proto:
 
 run-sensor-test:
 	go run \
-	-race \
+		-race \
 		-mod=vendor \
 		./cmd/sensor \
 		--name=${SENSOR_NAME} \
-		--addr="localhost:8080"
+		--addr="localhost:8080" \
+		--rate=100
 
 run-sink-test:
 	go run \
@@ -35,3 +38,6 @@ run-sink-test:
 		-mod=vendor \
 		./cmd/sink \
 		--config=${SERVER_CONFIG_FILE}
+
+gen-cert:
+	cd scripts; ./gen-certs.sh; cd ..

@@ -12,6 +12,10 @@ import (
 	"telemetry-task/lib/services/sensor"
 )
 
+const (
+	defaultSensorName = "test-sensor"
+)
+
 var (
 	logger = logUtil.LoggerWithPrefix("MAIN")
 )
@@ -19,11 +23,13 @@ var (
 func main() {
 	logger.Info("Sensor starting...")
 
-	sensorName := flag.String("name", "test", "name of sensor")
-	connectionStr := flag.String("addr", "localhost:8080", "Address of server in format IP:PORT")
+	sensorName := flag.String("name", defaultSensorName, "Name of sensor")
+	connectionStr := flag.String("addr", "", "Address of server in format IP:PORT")
+	rate := flag.Int("rate", 0, "Metrics per second")
+	certPath := flag.String("cert", "", "Path to the TLS certificate file")
 	flag.Parse()
 
-	conn, err := conn.GetClientConnection(*connectionStr)
+	conn, err := conn.GetClientConnection(*connectionStr, *certPath)
 	if err != nil {
 		log.Fatalf("failed to create client connection, err: %s", err.Error())
 	}
@@ -34,7 +40,7 @@ func main() {
 		}
 	}()
 
-	sensor, err := sensor.NewSensor(conn, 100, *sensorName)
+	sensor, err := sensor.NewSensor(conn, *rate, *sensorName)
 	if err != nil {
 		log.Fatalf("failed to create sensor service, err: %s", err.Error())
 	}

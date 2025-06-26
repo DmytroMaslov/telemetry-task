@@ -3,3 +3,5 @@ file_path: "./tmp/metrics.txt"
 buffer_size: 1024
 flush_interval: 100
 rate_limit: 1048576
+cert: ./certs/server-cert.pem
+key: ./certs/server-key.pem

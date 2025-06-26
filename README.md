@@ -9,6 +9,7 @@ This repo contains implementation of two components:
 
 - GO 1.23
 - Docker(optional) for proto rebuild
+- OpenSSL
 
 ## Installation
 
@@ -16,6 +17,12 @@ This repo contains implementation of two components:
 
 ```sh
 git clone https://github.com/DmytroMaslov/telemetry-task.git
+```
+
+### Generate certificates
+
+```sh
+make gen-cert
 ```
 
 ### Build binary
@@ -48,6 +55,8 @@ file_path: "./tmp/metrics.txt"
 buffer_size: 1024
 flush_interval: 100
 rate_limit: 1048576
+cert: ./certs/server-cert.pem
+key: ./certs/server-key.pem
 ```
 
 here:
@@ -56,6 +65,9 @@ here:
 - `buffer_size` - size of sink internal (in memory) buffer; in bytes
 - `flush_interval` - how often data from buffer is flushed to disk; in milliseconds
 - `rate_limit` - max input flow rate in bytes/sec
+- `cert` - path to cert
+- `key` - path to key
+NOTE: if `cert` or `key` are empty or do not exist sink will run without TLS
 
 ### Run the sensor
 
@@ -66,10 +78,13 @@ make run-sensor
 or
 
 ```sh
-./tmp/bin/sensor --addr localhost:8080 --name sensorName
+./tmp/bin/sensor --addr localhost:8080 --name sensorName --rate 100 --cert=./certs/ca-cert.pem
 ```
 
 here:
 
 - `addr` - address of sink server
 - `name` - name of the sensor
+- `rate` - metrics per second
+- `cert` - path to cert file
+NOTE: if `cert` is empty or does not exist, sensor will be run in insecure mode

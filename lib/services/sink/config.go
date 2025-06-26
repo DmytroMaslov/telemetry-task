@@ -18,6 +18,8 @@ type Config struct {
 	BufferSize    int    `yaml:"buffer_size"`
 	FlushInterval int    `yaml:"flush_interval"`
 	RateLimit     int    `yaml:"rate_limit"`
+	Cert          string `yaml:"cert"`
+	Key           string `yaml:"key"`
 }
 
 func DefaultConfig() *Config {
