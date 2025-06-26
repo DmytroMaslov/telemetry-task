@@ -19,9 +19,10 @@ var (
 
 type Sink struct {
 	pb.UnimplementedTelemetryServiceServer
-	mc          *MetricCollector
-	rateLimited rateLimiter.RateLimited
-	validator   validator.Validator
+	mc              *MetricCollector
+	metricEncryptor *EncryptManager
+	rateLimited     rateLimiter.RateLimited
+	validator       validator.Validator
 }
 
 func NewSink(cfg *Config) (*Sink, error) {
@@ -29,15 +30,17 @@ func NewSink(cfg *Config) (*Sink, error) {
 	if cfg.RateLimit <= 0 {
 		cfg.RateLimit = 1024 * 1024 // Default to 1 MB/s if not set
 	}
-	mc, err := NewMetricCollector(cfg)
+	em := NewEncryptManager()
+	mc, err := NewMetricCollector(cfg, em.outputCh)
 	if err != nil {
 		return nil, fmt.Errorf("crate new metric collector, err:%w", err)
 	}
 
 	return &Sink{
-		mc:          mc,
-		rateLimited: rateLimiter.NewRateLimiter(cfg.RateLimit),
-		validator:   validator.NewMetricValidator(),
+		mc:              mc,
+		rateLimited:     rateLimiter.NewRateLimiter(cfg.RateLimit),
+		validator:       validator.NewMetricValidator(),
+		metricEncryptor: em,
 	}, nil
 }
 
@@ -69,14 +72,22 @@ func (s *Sink) SendMetrics(stream pb.TelemetryService_SendMetricsServer) error {
 			logger.Debug("Dropping invalid metric", "metric", res)
 			continue
 		}
-		s.mc.metricsCh <- res
+
+		s.metricEncryptor.inputCh <- fmt.Sprintf("%d,%s,%d", res.Value, res.Name, res.Timestamp)
 	}
 }
 
 func (s *Sink) Start() error {
-	return s.mc.Start()
+	if err := s.metricEncryptor.Run(); err != nil {
+		return fmt.Errorf("run encryptor manager: %w", err)
+	}
+	if err := s.mc.Start(); err != nil {
+		return fmt.Errorf("run metric collector: %w", err)
+	}
+	return nil
 }
 
 func (s *Sink) Stop() error {
+	s.metricEncryptor.Stop()
 	return s.mc.Stop()
 }

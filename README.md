@@ -4,6 +4,7 @@ This repo contains implementation of two components:
 
 - sink
 - sensor
+- decrypt (for testing purpose)
 
 ## Requirements
 
@@ -88,3 +89,20 @@ here:
 - `rate` - metrics per second
 - `cert` - path to cert file
 NOTE: if `cert` is empty or does not exist, sensor will be run in insecure mode
+
+### Decrypt result
+
+```sh
+make decrypt
+```
+
+or
+
+```sh
+./tmp/bin/decrypt --input=./tmp/metrics.txt --output=./tmp/metrics_decrypted.txt
+```
+
+here:
+
+- `input` - path to file with encrypted data
+- `output` - path to file where decrypted data will be saved

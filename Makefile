@@ -1,6 +1,7 @@
 SENSOR_NAME= demo
 SERVER_CONFIG_FILE= ./artifacts/sink/config.yaml
 BIN_DIR= ${PWD}/tmp/bin
+export SECRET_KEY=1234567890123456
 
 build:
 	GOBIN=${BIN_DIR} go install -mod=vendor ./cmd/...
@@ -41,3 +42,8 @@ run-sink-test:
 
 gen-cert:
 	cd scripts; ./gen-certs.sh; cd ..
+
+decrypt:
+	${BIN_DIR}/decrypt \
+		--input=./tmp/metrics.txt \
+		--output=./tmp/metrics_decrypted.txt \

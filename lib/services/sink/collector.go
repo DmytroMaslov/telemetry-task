@@ -5,12 +5,11 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	pb "telemetry-task/protocol/telemetry"
 	"time"
 )
 
 type MetricCollector struct {
-	metricsCh     chan *pb.Metric
+	metricsCh     chan string
 	lock          *sync.Mutex
 	buffer        bytes.Buffer
 	doneCh        chan struct{}
@@ -18,7 +17,7 @@ type MetricCollector struct {
 	file          *os.File
 }
 
-func NewMetricCollector(cfg *Config) (*MetricCollector, error) {
+func NewMetricCollector(cfg *Config, in chan string) (*MetricCollector, error) {
 	if err := validateConfig(cfg); err != nil {
 		return nil, fmt.Errorf("invalid configuration for metric collector: %w", err)
 	}
@@ -32,7 +31,7 @@ func NewMetricCollector(cfg *Config) (*MetricCollector, error) {
 		buffer:        *bytes.NewBuffer(make([]byte, 0, cfg.BufferSize)),
 		flushInterval: cfg.FlushInterval,
 		doneCh:        make(chan struct{}),
-		metricsCh:     make(chan *pb.Metric),
+		metricsCh:     in,
 		file:          file,
 	}, nil
 }
@@ -57,16 +56,17 @@ func (bw *MetricCollector) Start() error {
 	errCh := make(chan error)
 	go func() {
 		defer func() {
-			close(bw.metricsCh)
 			close(errCh)
 		}()
 
 		for {
 			select {
-			case metric := <-bw.metricsCh:
-				err := bw.Write(metric)
-				if err != nil {
-					errCh <- err
+			case metric, ok := <-bw.metricsCh:
+				if ok {
+					err := bw.Write(fmt.Sprintf("%s\n", metric))
+					if err != nil {
+						errCh <- err
+					}
 				}
 
 			case <-ticker.C:
@@ -94,8 +94,7 @@ func (bw *MetricCollector) Start() error {
 	return nil
 }
 
-func (bw *MetricCollector) Write(metric *pb.Metric) error {
-	line := fmt.Sprintf("%d,%s,%d\n", metric.Value, metric.Name, metric.Timestamp)
+func (bw *MetricCollector) Write(line string) error {
 	logger.Debug("write metric", "metric", line)
 
 	bw.lock.Lock()
@@ -120,7 +119,6 @@ func (bw *MetricCollector) FlushWithLock() error {
 }
 
 func (bw *MetricCollector) Flush() error {
-	logger.Debug("Flushing buffer to file...")
 
 	if bw.buffer.Len() == 0 {
 		return nil // Nothing to write
