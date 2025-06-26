@@ -1,6 +1,6 @@
 # telemetry task
 
-This repo contains implementation of two components:
+This repo contains implementation of following components:
 
 - sink
 - sensor
