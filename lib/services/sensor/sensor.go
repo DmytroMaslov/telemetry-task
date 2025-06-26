@@ -23,6 +23,7 @@ type Sensor struct {
 	MetricSender   *MetricSender
 	RateCalculator ratecalculator.RateCalculator
 	stopCh         chan struct{}
+	wg             *sync.WaitGroup
 }
 
 func NewSensor(conn *grpc.ClientConn, rate int, name string) (*Sensor, error) {
@@ -38,6 +39,7 @@ func NewSensor(conn *grpc.ClientConn, rate int, name string) (*Sensor, error) {
 		MetricSender:   ms,
 		RateCalculator: rc,
 		stopCh:         make(chan struct{}),
+		wg:             &sync.WaitGroup{},
 	}, nil
 }
 
@@ -45,7 +47,6 @@ func (s *Sensor) Start(ctx context.Context) error {
 	if err := s.MetricSender.EstablishConnection(ctx); err != nil {
 		return fmt.Errorf("establish connection, err:%w", err)
 	}
-	wg := &sync.WaitGroup{}
 	trigger := make(chan struct{})
 	errorCh := make(chan error)
 
@@ -53,13 +54,12 @@ func (s *Sensor) Start(ctx context.Context) error {
 	workerCounter := 1
 
 	// run first worker
-	wg.Add(1)
-	go s.Send(wg, trigger, errorCh)
+	s.wg.Add(1)
+	go s.Send(s.wg, trigger, errorCh)
 
 	go func() {
 		defer func() {
 			close(trigger)
-			wg.Wait()
 			close(errorCh)
 		}()
 
@@ -78,9 +78,9 @@ func (s *Sensor) Start(ctx context.Context) error {
 					return
 				default:
 					workerCounter++
-					wg.Add(1)
+					s.wg.Add(1)
 					logger.Debug("start new worker", "total workers", workerCounter)
-					go s.Send(wg, trigger, errorCh)
+					go s.Send(s.wg, trigger, errorCh)
 				}
 			}
 			select {
@@ -115,6 +115,8 @@ func (s *Sensor) Stop() error {
 	logger.Info("stopped sensor")
 	s.stopCh <- struct{}{}
 	close(s.stopCh)
+	s.wg.Wait()
+
 	if err := s.MetricSender.metricStream.CloseSend(); err != nil {
 		return fmt.Errorf("failed to close metric stream: %w", err)
 	}
