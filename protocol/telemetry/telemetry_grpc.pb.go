@@ -22,7 +22,6 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TelemetryServiceClient interface {
-	// TODO Rename to Metrics
 	SendMetrics(ctx context.Context, opts ...grpc.CallOption) (TelemetryService_SendMetricsClient, error)
 }
 
@@ -72,7 +71,6 @@ func (x *telemetryServiceSendMetricsClient) CloseAndRecv() (*Result, error) {
 // All implementations should embed UnimplementedTelemetryServiceServer
 // for forward compatibility
 type TelemetryServiceServer interface {
-	// TODO Rename to Metrics
 	SendMetrics(TelemetryService_SendMetricsServer) error
 }
 

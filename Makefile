@@ -7,7 +7,8 @@ build:
 
 run-sensor:
 	${BIN_DIR}/sensor \
-		--addr="localhost:8080"
+		--addr="localhost:8080" \
+		--name=${SENSOR_NAME}
 
 run-sink:
 	${BIN_DIR}sink \

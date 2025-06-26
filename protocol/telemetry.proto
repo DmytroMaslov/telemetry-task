@@ -15,6 +15,5 @@ message Result{
 }
 
 service TelemetryService {
-    // TODO Rename to Metrics
     rpc SendMetrics(stream Metric)returns(Result){}
 }
