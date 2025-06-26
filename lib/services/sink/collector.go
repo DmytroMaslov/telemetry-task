@@ -19,7 +19,9 @@ type MetricCollector struct {
 }
 
 func NewMetricCollector(cfg *Config) (*MetricCollector, error) {
-	// TODO: add cfg validation
+	if err := validateConfig(cfg); err != nil {
+		return nil, fmt.Errorf("invalid configuration for metric collector: %w", err)
+	}
 	file, err := os.OpenFile(cfg.FilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("opening file: %v", err)
@@ -33,6 +35,19 @@ func NewMetricCollector(cfg *Config) (*MetricCollector, error) {
 		metricsCh:     make(chan *pb.Metric),
 		file:          file,
 	}, nil
+}
+
+func validateConfig(cfg *Config) error {
+	if cfg.FilePath == "" {
+		return fmt.Errorf("file path cannot be empty")
+	}
+	if cfg.BufferSize <= 0 {
+		return fmt.Errorf("buffer size must be greater than 0")
+	}
+	if cfg.FlushInterval <= 0 {
+		return fmt.Errorf("flush interval must be greater than 0")
+	}
+	return nil
 }
 
 func (bw *MetricCollector) Start() error {
